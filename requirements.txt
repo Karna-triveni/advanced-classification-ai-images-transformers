@@ -1,0 +1,6 @@
+opencv-python
+scipy
+flask
+flask-cors
+numpy
+Pillow

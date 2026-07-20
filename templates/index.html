@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Forgery Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+
+        .main-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .settings-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .setting-item label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .setting-item input, .setting-item select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .setting-item input:focus, .setting-item select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .upload-section {
+            border: 3px dashed #667eea;
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #f8f9ff;
+            margin-bottom: 20px;
+        }
+
+        .upload-section:hover {
+            background: #f0f3ff;
+            border-color: #764ba2;
+        }
+
+        .upload-section.dragging {
+            background: #e8ebff;
+            border-color: #764ba2;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            color: #667eea;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 14px;
+        }
+
+        .image-display {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            overflow: hidden;
+        }
+
+        .image-box {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background: #f8f9fa;
+        }
+
+        .image-box-header {
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .image-box-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: auto;
+        }
+
+        .image-box img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .placeholder {
+            color: #999;
+            text-align: center;
+        }
+
+        .process-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 20px auto 0;
+            display: block;
+        }
+
+        .process-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .process-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stats-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 12px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .stats-panel.show {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            color: #856404;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+            color: #155724;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            color: #721c24;
+        }
+
+        .chat-panel {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .chat-header h2 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.5;
+            font-size: 14px;
+        }
+
+        .message.user {
+            background: #667eea;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant {
+            background: #f0f0f0;
+            color: #333;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-self: flex-start;
+            padding: 12px 16px;
+            background: #f0f0f0;
+            border-radius: 12px;
+        }
+
+        .typing-indicator.active {
+            display: block;
+        }
+
+        .typing-dots span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 14px;
+            resize: none;
+            font-family: inherit;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            background: #764ba2;
+        }
+
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+
+            .chat-panel {
+                height: 500px;
+            }
+
+            .settings-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-panel">
+            <div class="header">
+                <h1>🔍 Image Forgery Detection</h1>
+                <p>Upload an image to detect forged or duplicated regions using DCT analysis</p>
+            </div>
+
+            <div class="alert alert-warning" id="backendAlert">
+                ℹ️ <strong>Backend Status:</strong> Checking connection... Make sure Flask backend is running on http://localhost:5000
+            </div>
+
+            <div class="settings-panel">
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label>Block Size</label>
+                        <input type="number" id="blockSize" value="8" min="4" max="16">
+                    </div>
+                    <div class="setting-item">
+                        <label>Quality Factor</label>
+                        <select id="qualityFactor">
+                            <option value="0.5">0.5 (50%)</option>
+                            <option value="0.75" selected>0.75 (75%)</option>
+                            <option value="0.9">0.9 (90%)</option>
+                            <option value="0">Random</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label>Shift Threshold</label>
+                        <input type="number" id="shiftThresh" value="10" min="1" max="100">
+                    </div>
+                    <div class="setting-item">
+                        <label>Stride</label>
+                        <input type="number" id="stride" value="1" min="1" max="8">
+                    </div>
+                </div>
+            </div>
+
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Click to upload or drag & drop</div>
+                <div class="upload-hint">PNG, JPG, JPEG (Max 10MB)</div>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;">
+            </div>
+
+            <div class="image-display">
+                <div class="image-box">
+                    <div class="image-box-header">Original Image</div>
+                    <div class="image-box-content" id="originalImage">
+                        <div class="placeholder">No image uploaded</div>
+                    </div>
+                </div>
+                <div class="image-box">
+                    <div class="image-box-header">Detected Forgery</div>
+                    <div class="image-box-content" id="processedImage">
+                        <div class="placeholder">Upload and process an image</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="process-btn" id="processBtn" disabled>🔬 Process Image</button>
+
+            <div class="stats-panel" id="statsPanel">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="statForgeries">0</div>
+                        <div class="stat-label">Forgery Regions</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statVectors">0</div>
+                        <div class="stat-label">Shift Vectors</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statMaxCount">0</div>
+                        <div class="stat-label">Max Shift Count</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="statStatus">-</div>
+                        <div class="stat-label">Status</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-panel">
+            <div class="chat-header">
+                <h2>💬 AI Assistant</h2>
+                <p>Ask me anything about image forgery detection</p>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">
+                    Hello! I'm your AI assistant for image forgery detection. I can help you understand:
+                    <br><br>
+                    • How the DCT-based detection algorithm works<br>
+                    • What the parameters mean and how to tune them<br>
+                    • How to interpret the results<br>
+                    • Best practices for forgery detection<br>
+                    <br>
+                    Feel free to ask me anything!
+                </div>
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <textarea class="chat-input" id="chatInput" placeholder="Ask me about image forgery detection..." rows="1"></textarea>
+                <button class="send-btn" id="sendBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000';
+        
+        const fileInput = document.getElementById('fileInput');
+        const uploadSection = document.getElementById('uploadSection');
+        const originalImage = document.getElementById('originalImage');
+        const processedImage = document.getElementById('processedImage');
+        const processBtn = document.getElementById('processBtn');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const backendAlert = document.getElementById('backendAlert');
+        const statsPanel = document.getElementById('statsPanel');
+
+        let uploadedImageData = null;
+
+        // Check backend status on load
+        checkBackendStatus();
+
+        async function checkBackendStatus() {
+            try {
+                const response = await fetch(`${API_URL}/api/health`);
+                if (response.ok) {
+                    backendAlert.className = 'alert alert-success';
+                    backendAlert.innerHTML = '✓ <strong>Backend Connected:</strong> Flask server is running and ready!';
+                } else {
+                    throw new Error('Backend not responding');
+                }
+            } catch (error) {
+                backendAlert.className = 'alert alert-error';
+                backendAlert.innerHTML = '✗ <strong>Backend Offline:</strong> Please start the Flask backend: <code>python app.py</code>';
+            }
+        }
+
+        // File upload handling
+        uploadSection.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragging');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragging');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragging');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleFile(file);
+            }
+        });
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        }
+
+        function handleFile(file) {
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size exceeds 10MB limit');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedImageData = e.target.result;
+                originalImage.innerHTML = `<img src="${uploadedImageData}" alt="Original">`;
+                processBtn.disabled = false;
+                processedImage.innerHTML = '<div class="placeholder">Click "Process Image" to detect forgery</div>';
+                statsPanel.classList.remove('show');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Process image
+        processBtn.addEventListener('click', async () => {
+            if (!uploadedImageData) return;
+
+            const blockSize = parseInt(document.getElementById('blockSize').value);
+            const qualityFactor = parseFloat(document.getElementById('qualityFactor').value);
+            const shiftThresh = parseInt(document.getElementById('shiftThresh').value);
+            const stride = parseInt(document.getElementById('stride').value);
+
+            processBtn.disabled = true;
+            processBtn.textContent = '⏳ Processing...';
+            processedImage.innerHTML = '<div class="placeholder">Analyzing image for forgery...</div>';
+
+            try {
+                const response = await fetch(`${API_URL}/api/detect`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image: uploadedImageData,
+                        blockSize,
+                        qualityFactor,
+                        shiftThresh,
+                        stride
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    processedImage.innerHTML = `<img src="${data.result_image}" alt="Processed">`;
+                    
+                    // Update statistics
+                    document.getElementById('statForgeries').textContent = data.statistics.forgery_regions;
+                    document.getElementById('statVectors').textContent = data.statistics.total_shift_vectors;
+                    document.getElementById('statMaxCount').textContent = data.statistics.max_shift_count;
+                    document.getElementById('statStatus').textContent = data.statistics.forgery_detected ? 'DETECTED' : 'CLEAN';
+                    document.getElementById('statStatus').style.color = data.statistics.forgery_detected ? '#dc3545' : '#28a745';
+                    
+                    statsPanel.classList.add('show');
+
+                    // Add message to chat
+                    const statusMsg = data.statistics.forgery_detected 
+                        ? `Analysis complete! Found ${data.statistics.forgery_regions} potential forgery regions. Red and green highlights show duplicated areas.`
+                        : 'Analysis complete! No forgery detected in this image.';
+                    addMessage('assistant', statusMsg);
+                } else {
+                    throw new Error(data.error || 'Processing failed');
+                }
+            } catch (error) {
+                processedImage.innerHTML = `<div class="placeholder" style="color: #dc3545;">Error: ${error.message}<br><br>Make sure the Flask backend is running.</div>`;
+                addMessage('assistant', `Error processing image: ${error.message}. Please ensure the backend server is running.`);
+            } finally {
+                processBtn.disabled = false;
+                processBtn.textContent = '🔬 Process Image';
+            }
+        });
+
+        // Chat functionality
+        sendBtn.addEventListener('click', sendMessage);
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        async function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            addMessage('user', message);
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+
+            sendBtn.disabled = true;
+            typingIndicator.classList.add('active');
+
+            try {
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 1000,
+                        messages: [{
+                            role: 'user',
+                            content: `You are an AI assistant helping users understand image forgery detection. The system uses DCT (Discrete Cosine Transform) analysis with these parameters:
+
+- Block Size: Divides image into blocks (default 8x8 pixels)
+- Quality Factor: Controls quantization matrix (0.5=50%, 0.75=75%, 0.9=90%, 0=random)
+- Shift Threshold: Minimum number of matching blocks needed to flag potential forgery
+- Stride: Sliding window step size (lower = more overlapping blocks, higher accuracy but slower)
+
+The algorithm works as follows:
+1. Divides image into overlapping blocks using sliding window
+2. Applies DCT (Discrete Cosine Transform) to each block
+3. Quantizes DCT coefficients using quality-factor based matrix
+4. Sorts blocks lexicographically to find duplicates
+5. Calculates shift vectors between matched blocks
+6. Applies threshold to filter significant matches
+7. Highlights detected regions (red and green overlays show duplicated areas)
+
+This detects copy-move forgeries where parts of an image are copied and pasted elsewhere in the same image.
+
+User question: ${message}`
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                const assistantMessage = data.content?.find(c => c.type === 'text')?.text || 'Sorry, I encountered an error.';
+                
+                typingIndicator.classList.remove('active');
+                addMessage('assistant', assistantMessage);
+            } catch (error) {
+                typingIndicator.classList.remove('active');
+                addMessage('assistant', 'I apologize, but I\'m having trouble connecting right now. Here\'s what I can tell you: The forgery detection algorithm uses DCT analysis to find duplicated regions. It works by comparing image blocks to identify copy-paste forgeries. Adjust the parameters to fine-tune detection sensitivity. Would you like to know more about specific parameters?');
+            }
+
+            sendBtn.disabled = false;
+        }
+
+        function addMessage(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.textContent = content;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Auto-resize textarea
+        chatInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+    </script>
+</body>
+</html>

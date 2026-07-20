@@ -1,0 +1,1 @@
+ python code\cmf_detect.py --img C:\Users\29sus\Downloads\Desktop\image-forgery-detection\images\forged1.png --block_size 8 --qf 0.75 --shift_thresh 10 --stride 1
